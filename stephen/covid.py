@@ -108,7 +108,7 @@ external_stylesheets = [
 all_regions = odata['PHU_NAME'].unique()
 
 
-app = JupyterDash(__name__, external_stylesheets = external_stylesheets)
+app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
 #app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
 my_options = [{"label":col, "value":col} for col in data['age_category'].unique()]
 my_options.insert(0,{'label':'All', "value": 'All'})
@@ -514,6 +514,6 @@ def build_bars(regions):
     return fig1, fig2, fig3
     
 
-app.run_server(mode='external')
+app.run_server()
 
 

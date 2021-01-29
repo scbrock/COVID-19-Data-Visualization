@@ -3,6 +3,7 @@ import plotly.express as px  # (version 4.7.0)
 import plotly.graph_objects as go
 
 import dash  # (version 1.12.0) pip install dash
+import dash_table
 from jupyter_dash import JupyterDash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -11,6 +12,10 @@ from dash.dependencies import Input, Output
 from datetime import date
 import datetime
 import numpy as np
+
+import requests
+from bs4 import BeautifulSoup
+import re
 
 
 # ontario testing data
@@ -56,6 +61,36 @@ odata = clean_region(odata)
 odata = daily_rec_deaths(odata)
 
 
+"""
+Web Scraping
+"""
+def get_updated_date(url='https://globalnews.ca/news/6859636/ontario-coronavirus-timeline/'):
+    '''
+    return updated date from website
+    '''
+    page = requests.get(url)
+
+    soup = BeautifulSoup(page.content, 'html.parser')
+    return soup.find_all('span', text=re.compile("^Updated"))[0].text
+
+def get_news_table(url = 'https://globalnews.ca/news/6859636/ontario-coronavirus-timeline/'):
+    '''
+    Get the news data from URL
+    '''
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    ps = soup.find_all('p')
+    events = [ps[i].text.replace(u'\xa0', u' ') for i in range(6,len(ps)) if ps[i].find('strong')]
+    events = events[::-1]
+    dates = [e.split(':',1)[0] for e in events]
+    descriptions = [e.split(':',1)[1].strip()+'\n' for e in events]
+    news = pd.DataFrame({'Date':dates, 'Description':descriptions})
+    
+    return news
+
+
+news_df = get_news_table()
+
 '''
 Start of Dashboard Application
 '''
@@ -73,7 +108,8 @@ external_stylesheets = [
 all_regions = odata['PHU_NAME'].unique()
 
 
-app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
+app = JupyterDash(__name__, external_stylesheets = external_stylesheets)
+#app = dash.Dash(__name__, external_stylesheets = external_stylesheets)
 my_options = [{"label":col, "value":col} for col in data['age_category'].unique()]
 my_options.insert(0,{'label':'All', "value": 'All'})
 
@@ -84,6 +120,52 @@ app.layout = html.Div([
 
     html.H1("Ontario COVID-19 Dashboard", style={'text-align': 'center', 'font-size':'50px'}),
     
+    # Row 0 - cool data and news
+    html.Div([
+        
+        html.Div([
+            html.H3('Description'),
+            html.P('This is a test paragraph')
+        ], style={'padding-left':"40px"}, className="six columns bg-white text-dark"),
+        
+        
+        html.Div([
+            #html.Br(),
+            html.H3('News Updates', className="bg-secondary text-white"),
+            dash_table.DataTable(
+                id='news_table',
+                columns=[{"name": i, "id": i} for i in news_df.columns],
+                data=news_df.to_dict('records'),
+                style_table={},
+                fixed_rows={'headers': True},
+                style_cell={
+                    'maxWidth':'500px', 'textAlign': 'left', 'font-family':'sans-serif'
+                },
+                style_data={
+                    'whiteSpace':'normal', 'height':'auto', 'font-size':'14px'
+                },
+                style_header={
+                    'fontWeight': 'bold',
+                    'font-size':'16px'
+                },
+            ),
+            html.Div([
+                dcc.Link(
+                    id='news_link', 
+                    children=['Source: Global News Canada'], 
+                    href='https://globalnews.ca/news/6859636/ontario-coronavirus-timeline/',
+                    target='_blank',
+                    style={'color':'white'}
+                )
+            ], style={'font-size':'14px'})
+
+        ], style={}, className="six columns text-dark"),
+        
+
+        
+
+    ], className="row"),
+    html.Br(),
    
     # ROW 1 - Headers, dropdowns, etc
     html.Div([
@@ -131,11 +213,46 @@ app.layout = html.Div([
         ], className="three columns"),
     ], className="row"),
     
-
-    html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
-    #html.Br(),
     
-    # ROW 2 - testing and active
+    
+    html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
+    # ROW 2
+    #html.Br(),
+        html.Div([
+        html.Div([
+            #html.H3('Plot 1'),
+            html.Br(),
+            dcc.Graph(id='placeholder', figure={}
+                        )
+        ], style={"padding-left":"40px"}, className="six columns"),
+        
+        html.Div([
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='bar1',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='bar2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='bar3',
+                        figure={}
+                    )
+                ]),
+            ])
+        ], style={}, className='six columns text-dark')
+
+
+    ], className="row"),
+    
+    # ROW 3 - testing and active
     html.Div([
         html.Div([
             #html.H3('Plot 1'),
@@ -152,56 +269,34 @@ app.layout = html.Div([
                             }
                         ))
         ], style={"padding-left":"40px"}, className="six columns"),
-
+        
         html.Div([
-            html.Br(),
-            #html.H3('Plot 2'),
-            dcc.Graph(id='graph2', figure= px.line(
-                            data_frame = odata,
-                            x = 'DATE',
-                            y = 'ACTIVE_CASES',
-                            color = 'PHU_NAME',
-                            title="Active Cases vs Date",
-                            labels = {
-                                'DATE': 'Date',
-                                'ACTIVE_CASES': "Number of Active Cases"
-                            }
-                        )
-                     )
-        ], className="six columns"),
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='graph2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='graph3',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='graph4',
+                        figure={}
+                    )
+                ]),
+            ])
+        ], style={}, className='six columns text-dark')
+
+
     ], className="row"),
     
-    
-    # Row 3 - Recovered and Deaths
-    html.Div([
-        html.Div([
-            html.Br(),
-            #html.H3('Resolved Cases'),
-            dcc.Graph(id='graph3', figure=px.line(
-                            data_frame = odata,
-                            x = 'DATE',
-                            y = 'RESOLVED_CASES',
-                            color = 'PHU_NAME',
-                            title="Active Cases vs Date",
-                            labels = {
-                                'DATE': 'Date',
-                                'RESOLVED_CASES': "Number of Resolved Cases"
-                            }
-                        ))
-        ], style={"padding-left":"40px"}, className="six columns"),
-
-        html.Div([
-            html.Br(),
-            #html.H3('New Fatal Cases by Day'),
-            dcc.Graph(id='graph4', figure= {})
-        ], className="six columns"),
-    ], className="row"),
-    
-    
-    # introduce plots of change per day
-    # add trend line
-    
-    # deaths by day
+  
     
     # Row 4 - Deaths by day
     html.Div([
@@ -219,19 +314,13 @@ app.layout = html.Div([
             dcc.Graph(id='graph5', figure={})
         ], className="six columns"),
     ], className="row"),
+    html.Br(),
+
 
     
     
 ], className='bg-secondary text-white')
 
-# @app.callback(
-#     [Output(component_id='select_ref', component_property='children'),
-#      Output(component_id='graph1', component_property='figure')],
-#     [Input(component_id='age_group', component_property='value')]
-# )
-# # 1. callback selects value, 
-# # 2. value is sent to function (defined after callback)
-# # 3. function returned values go into the output of callback
 
 
 
@@ -265,7 +354,7 @@ def update_graph_date(option_slctd, start, end):
             x = 'DATE',
             y = 'percent_positive_7d_avg',
             color = 'age_category',
-            title="Percent Positive vs Date",
+            title="Percent Positive",
             labels = {
                 'DATE': 'Date',
                 'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
@@ -396,7 +485,35 @@ def graph2(regions, start, end, is_100k):
     
     return fig1, fig2, fig3, fig4, fig5
 
+
+@app.callback([Output(component_id='bar1', component_property='figure'),
+              Output(component_id='bar2', component_property='figure'),
+              Output(component_id='bar3', component_property='figure')],
+             [Input('region_select', 'value')])
+
+def build_bars(regions):
+    '''
+    build 3 bar charts: active, resolved, deaths for region cases
+    '''
+
+    
+    if 'All' in regions:
+        regions = all_regions
+    elif len(regions) == 0:
+        return {}, {}, {}
+    
+    maxdate = odata['DATE'].max()
+    
+    df = odata[odata['PHU_NAME'].isin(regions) & (odata['DATE'] == str(maxdate))]
+    
+    fig1 = px.bar(df, x="PHU_NAME", y="ACTIVE_CASES", color = "PHU_NAME", title="Active Cases as of "+maxdate)
+    
+    fig2 = px.bar(df, x="PHU_NAME", y="RESOLVED_CASES", color = "PHU_NAME", title="Resolved Cases as of "+maxdate)
+    fig3 = px.bar(df, x="PHU_NAME", y="DEATHS", color = "PHU_NAME", title="Fatal Cases as of "+maxdate)
+    
+    return fig1, fig2, fig3
     
 
-app.run_server()
+app.run_server(mode='external')
+
 

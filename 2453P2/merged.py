@@ -384,14 +384,23 @@ app.layout = dbc.Container([
     ], align='start'),
 
     # Row 10 - animation
-
+    dbc.Row([
+        dbc.Col([
+            html.Br(),
+            #html.H3('Daily Recovered'),
+            dcc.Graph(id='graph_animate', figure={})
+        ], style={}, className="six columns"),
+        dbc.Col([
+            html.Br(),
+            #html.H3('Daily Recovered'),
+            dcc.Graph(id='graph_animate2', figure={})
+        ], style={}, className="six columns"),
+    ], align='start')
 
 ], fluid=True)
 
                     
-# px.scatter(df, x="gdpPercap", y="lifeExp", animation_frame="year", animation_group="country",
-#            size="pop", color="continent", hover_name="country",
-#            log_x=True, size_max=55, range_x=[100,100000], range_y=[25,90])                         
+                      
                     
 
 
@@ -439,7 +448,8 @@ def update_graph2(line_selected):
 # Callback for the dropdown menu used for regional data and testing
 @app.callback(
     [Output(component_id='select_ref', component_property='children'),
-     Output(component_id='graph1', component_property='figure')],
+     Output(component_id='graph1', component_property='figure'),
+     Output(component_id='graph_animate', component_property='figure')],
     [Input(component_id='age_group', component_property='value'),
      Input(component_id='date-picker-range', component_property='start_date'),
      Input(component_id='date-picker-range', component_property='end_date')]
@@ -461,6 +471,7 @@ def update_graph_date(option_slctd, start, end):
 
     if df.shape[0] == 0:
         fig = px.line()
+        return select_ref, px.line(), {}
     else:
         fig = px.line(
             data_frame = df,
@@ -477,8 +488,48 @@ def update_graph_date(option_slctd, start, end):
 
     fig.update_xaxes(tickangle=90, nticks=20)
     #fig.update_layout(width=int(700))
+
+    df['DATE'] = df['DATE'].astype(str)
+    fig2 = px.bar(
+            df,
+            x='percent_positive_7d_avg',
+            y='age_category',
+            color='age_category',
+            title='Percent_positive',
+            animation_frame='DATE',
+            animation_group='age_category',
+            range_x=[0.0,0.10]
+        )
+
+    # fig2 = px.line(
+    #     df, 
+    #     x="DATE", 
+    #     y="percent_positive_7d_avg", 
+    #     animation_frame="DATE", 
+    #     color = 'age_category',
+    #     title="Percent Positive",
+    #     labels = {
+    #         'DATE': 'Date',
+    #         'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
+    #     }
+    #     # animation_group="country",
+    #     # size="pop", 
+    #     # color="continent", 
+    #     # hover_name="country",
+    #     # log_x=True,
+    #     # size_max=55,
+    #     # range_x=[100,100000],
+    #     # range_y=[25,90]
+    # )   
+
+    # df2 = px.data.gapminder()
+    # fig2 = px.scatter(df2, x="gdpPercap", y="lifeExp", animation_frame="year", animation_group="country",
+    #            size="pop", color="continent", hover_name="country",
+    #            log_x=True, size_max=55, range_x=[100,100000], range_y=[25,90])
     
-    return select_ref, fig
+    #fig2 = {}
+
+    return select_ref, fig, fig2
 
 
 # callback for regional counts

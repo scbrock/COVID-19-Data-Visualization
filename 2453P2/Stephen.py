@@ -172,7 +172,7 @@ app.layout = html.Div([
     html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
     # ROW 2
     #html.Br(),
-        html.Div([
+    html.Div([
         html.Div([
             #html.H3('Plot 1'),
             html.Br(),

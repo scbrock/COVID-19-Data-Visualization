@@ -10,6 +10,7 @@ import dash_table
 import requests
 from bs4 import BeautifulSoup
 import re
+from datetime import date
 
 from functions import *
 
@@ -86,11 +87,16 @@ odata = pd.read_csv('data/on_cases_by_region.csv')
 odata = clean_region(odata)
 odata = daily_rec_deaths(odata)
 news_df = get_news_table()
+on_region_pop = pd.read_csv('data/ontario_region_population.csv')
 all_regions = odata['PHU_NAME'].unique()
 my_options = [{"label":col, "value":col} for col in data_s['age_category'].unique()]
 my_options.insert(0,{'label':'All', "value": 'All'})
 region_options = [{"label": name, "value": name} for name in odata['PHU_NAME'].unique()]
 region_options.insert(0,{"label":"All", "value":"All"})
+orpop = pd.read_csv('data/ontario_region_population.csv')
+orpop['Population'] = [int(s.replace(',','')) for s in orpop['Population']]
+odata = odata.merge(right=orpop, how='left', left_on='PHU_NAME', right_on='new_region')
+odata['Population'] = odata['Population'].fillna(odata['Population'].mean())
 
 
 
@@ -205,18 +211,187 @@ app.layout = dbc.Container([
         )
    
     ], align="start"),
-    html.Br()                     # Vertical: start, center, end
+    html.Br(),                     # Vertical: start, center, end
+    # dbc.Row([
+    #     dbc.Col([
+    #         html.P("Dashboard for monitiorng covid19 in Ontario:",
+    #                style={"textDecoration": "underline"}),
+    #         dcc.Markdown('''
+    #                 * Language: Python, Dash, Plotly
+    #                 * Data Source:
+    #                   * Ontario data Source:
+    #                 * Github: https://github.com/scbrock/COVID-19-Data-Visualization
+    #                 * Reference:
+    #                 *
+    #                 ''') ,
+                                
+    #     ], width={'size':4},
+    #      ),
+        
+    #     dbc.Col([
+    #       html.P("Dynamic Animation:"),
+    #       html.Br(),
+    #         dcc.Graph(id='animation', 
+    #                   figure=fig2),
+    #         ], width={'size':8},
+    #     )
+   
+    # ], align="start"),
+
+    #row 6
+    dbc.Row([
+        dbc.Col([
+            
+            
+            html.H3('Select Age Group(s)', style={'padding-left':"40px"}),
+            dcc.Dropdown(id="age_group",
+                options=my_options,
+                multi=True,
+                value=[my_options[0]['value']],
+                style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
+                className='text-dark'
+            ),
+            html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
+        ], className="three columns"),
+
+        dbc.Col([
+            html.H3('Select Date Range'),
+            dcc.DatePickerRange(
+                id='date-picker-range',
+                start_date=date(2020, 1, 1),
+                end_date=date(2020, 12, 1),
+                end_date_placeholder_text='Select a date!',
+                style = {'width': "100%", "display":"inline-block"}
+            )
+        ], className="three columns"),
+        dbc.Col([
+            html.H3('Select Region(s)', style={'padding-left':"0px"}),
+            dcc.Dropdown(id="region_select",
+                options=region_options,
+                multi=True,
+                value=[region_options[0]['value']],
+                style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
+                className='text-dark'
+            )
+        ], className="three columns"),
+        dbc.Col([
+            html.H3('Options', style={'padding-left':"0px"}),
+            dcc.Checklist(
+                id="per100k",
+                options=[
+                    {'label': 'Count per 100,000 people (not including daily resolved or fatal cases)', 'value': '100k'},
+                ],
+                value=[],
+                style={'font-size':'12px'}
+            )  
+        ], className="three columns"),
+    ], align='start'),
+
+    # ROW 7
+    dbc.Row([
+        dbc.Col([
+            #html.H3('Plot 1'),
+            html.Br(),
+            dcc.Graph(id='placeholder', figure={}
+                        )
+        ], style={"padding-left":"40px"}, className="six columns"),
+        
+        dbc.Col([
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='bar1',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='bar2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='bar3',
+                        figure={}
+                    )
+                ]),
+            ])
+        ], style={}, className='six columns text-dark')
 
 
+    ], align='start'),
+
+    # ROW 8 - testing and active
+    dbc.Row([
+        dbc.Col([
+            #html.H3('Plot 1'),
+            html.Br(),
+            dcc.Graph(id='graph1', figure=px.line(
+                            data_frame = odata,
+                            x = 'DATE',
+                            y = 'RESOLVED_CASES',
+                            color = 'PHU_NAME',
+                            title="Active Cases vs Date",
+                            labels = {
+                                'DATE': 'Date',
+                                'RESOLVED_CASES': "Number of Resolved Cases"
+                            }
+                        ))
+        ], style={"padding-left":"40px"}, className="six columns"),
+        
+        dbc.Col([
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='graph2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='graph3',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='graph4',
+                        figure={}
+                    )
+                ]),
+            ])
+        ], style={}, className='six columns text-dark')
 
 
+    ], align='start'),
 
+    # Row 9 - deaths by day
+    dbc.Row([
+        
+        dbc.Col([
+            html.Br(),
+            #html.H3('Daily Recovered'),
+            dcc.Graph(id='graph6', figure={})
+        ], style={"padding-left":"40px"}, className="six columns"),
+
+    
+        dbc.Col([
+            html.Br(),
+            #html.H3('Fatalities'),
+            dcc.Graph(id='graph5', figure={})
+        ], className="six columns"),
+    ], align='start'),
+
+    # Row 10 - animation
 
 
 ], fluid=True)
 
                     
-                         
+# px.scatter(df, x="gdpPercap", y="lifeExp", animation_frame="year", animation_group="country",
+#            size="pop", color="continent", hover_name="country",
+#            log_x=True, size_max=55, range_x=[100,100000], range_y=[25,90])                         
                     
 
 
@@ -259,6 +434,252 @@ def update_graph2(line_selected):
     fig1 = px.line(df1, x="Reported Date", y=line_selected)
 
     return fig1
+
+
+# Callback for the dropdown menu used for regional data and testing
+@app.callback(
+    [Output(component_id='select_ref', component_property='children'),
+     Output(component_id='graph1', component_property='figure')],
+    [Input(component_id='age_group', component_property='value'),
+     Input(component_id='date-picker-range', component_property='start_date'),
+     Input(component_id='date-picker-range', component_property='end_date')]
+)
+
+def update_graph_date(option_slctd, start, end):
+    select_ref = "The age group chosen by user: {}".format(option_slctd)
+    
+    if 'All' in option_slctd:
+        option_slctd = ['0to13', '14to17', '18to24', '25to64', '65+']
+
+    
+    sdt = pd.to_datetime(start)
+    edt = pd.to_datetime(end)
+    
+    df = data_s[(data_s['age_category'].isin(option_slctd)) & (data_s['DATE'] >= sdt) & (data_s['DATE'] <= edt)] #.groupby('DATE').sum().reset_index()
+    df = df.sort_values('DATE')
+    #print(df.head())
+
+    if df.shape[0] == 0:
+        fig = px.line()
+    else:
+        fig = px.line(
+            data_frame = df,
+            x = 'DATE',
+            y = 'percent_positive_7d_avg',
+            color = 'age_category',
+            title="Percent Positive",
+            labels = {
+                'DATE': 'Date',
+                'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
+            }
+        )
+
+
+    fig.update_xaxes(tickangle=90, nticks=20)
+    #fig.update_layout(width=int(700))
+    
+    return select_ref, fig
+
+
+# callback for regional counts
+@app.callback([Output(component_id='graph2', component_property='figure'),
+              Output(component_id='graph3', component_property='figure'),
+              Output(component_id='graph4', component_property='figure'),
+              Output(component_id='graph5', component_property='figure'),
+              Output(component_id='graph6', component_property='figure')],
+             [Input('region_select', 'value'),
+             Input('date-picker-range', 'start_date'),
+             Input('date-picker-range', 'end_date'),
+             Input('per100k', 'value')])
+
+def graph2(regions, start, end, is_100k):
+    '''
+    function for working with the graph on the right at the top
+    '''
+    
+    if 'All' in regions:
+        regions = all_regions
+    elif len(regions) == 0:
+        return {}, {}, {}, {}, {}
+    
+    start = str(pd.to_datetime(start).date())
+    end = str(pd.to_datetime(end).date())
+    
+    df = odata
+    df = odata[odata['PHU_NAME'].isin(regions) & (odata['DATE'] >= start) & (odata['DATE'] <= end)]
+    
+    
+    fig1_title = "Active Cases"
+    fig1_yaxis = "Number of Active Cases"
+    
+    fig2_title = "Resolved Cases"
+    fig2_yaxis = "Cumulative Number of Resolved Cases"
+        
+    fig3_title = "Fatal Cases"
+    fig3_yaxis = "Cumulative Number of Fatal Cases"
+    
+    if len(is_100k) > 0:
+        # list is not empty, so divide all counts by 100k
+        df['ACTIVE_CASES'] = df["ACTIVE_CASES"]/df['Population']*100000
+        df['RESOLVED_CASES'] = df["RESOLVED_CASES"]/df['Population']*100000
+        df['DEATHS'] = df["DEATHS"]/df['Population']*100000
+        fig1_title += ' Per 100,000'
+        fig1_yaxis += ' Per 100,000'
+        fig2_title += ' Per 100,000'
+        fig2_yaxis += ' Per 100,000'
+        fig3_title += ' Per 100,000'
+        fig3_yaxis += ' Per 100,000'
+        
+        
+    fig1 = px.line(
+        data_frame = df,
+        x = 'DATE',
+        y = 'ACTIVE_CASES',
+        color = 'PHU_NAME',
+        title=fig1_title,
+        labels = {
+            'DATE': 'Date',
+            'ACTIVE_CASES': fig1_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    fig2 = px.line(
+        data_frame = df,
+        x = 'DATE',
+        y = 'RESOLVED_CASES',
+        color = 'PHU_NAME',
+        title=fig2_title,
+        labels = {
+            'DATE': 'Date',
+            'RESOLVED_CASES': fig2_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    fig3 = px.line(
+        data_frame = df,
+        x = 'DATE',
+        y = 'DEATHS',
+        color = 'PHU_NAME',
+        title=fig3_title,
+        labels = {
+            'DATE': 'Date',
+            'DEATHS': fig3_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    
+    fig4 = px.line(
+        data_frame = df,
+        x = 'DATE',
+        y = 'DAILY_DEATHS',
+        color = 'PHU_NAME',
+        title="Daily Fatal Cases",
+        labels = {
+            'DATE': 'Date',
+            'DAILY_DEATHS': "Daily Number of Fatal Cases",
+            "PHU_NAME": "Region"
+        }
+    )
+    
+    fig5 = px.line(
+        data_frame = df,
+        x = 'DATE',
+        y = 'DAILY_RECOVERED',
+        color = 'PHU_NAME',
+        title="Daily Resolved Cases",
+        labels = {
+            'DATE': 'Date',
+            'DAILY_RECOVERED': "Daily Number of Recovered Cases",
+            "PHU_NAME": "Region"
+        }
+    )
+    
+    
+    
+    return fig1, fig2, fig3, fig4, fig5
+
+
+@app.callback([Output(component_id='bar1', component_property='figure'),
+              Output(component_id='bar2', component_property='figure'),
+              Output(component_id='bar3', component_property='figure')],
+             [Input('region_select', 'value'),
+             Input('per100k', 'value')])
+
+def build_bars(regions, is_100k):
+    '''
+    build 3 bar charts: active, resolved, deaths for region cases
+    '''
+
+    
+    if 'All' in regions:
+        regions = all_regions
+    elif len(regions) == 0:
+        return {}, {}, {}
+    
+    maxdate = odata['DATE'].max()
+    
+    df = odata[odata['PHU_NAME'].isin(regions) & (odata['DATE'] == str(maxdate))]
+    
+    fig1_title = "Active Cases as of "+maxdate
+    fig1_yaxis = "Number of Active Cases"
+    
+    fig2_title = "Resolved Cases as of "+maxdate
+    fig2_yaxis = "Cumulative Number of Resolved Cases"
+        
+    fig3_title = "Fatal Cases as of "+maxdate
+    fig3_yaxis = "Cumulative Number of Fatal Cases"
+    
+    if len(is_100k) > 0:
+        # list is not empty, so divide all counts by 100k
+        df['ACTIVE_CASES'] = df["ACTIVE_CASES"]/df['Population']*100000
+        df['RESOLVED_CASES'] = df["RESOLVED_CASES"]/df['Population']*100000
+        df['DEATHS'] = df["DEATHS"]/df['Population']*100000
+        fig1_title += ' Per 100,000'
+        fig1_yaxis += ' Per 100,000'
+        fig2_title += ' Per 100,000'
+        fig2_yaxis += ' Per 100,000'
+        fig3_title += ' Per 100,000'
+        fig3_yaxis += ' Per 100,000'
+
+
+
+    fig1 = px.bar(
+        df, 
+        x="PHU_NAME", 
+        y="ACTIVE_CASES", 
+        color = "PHU_NAME", 
+        title=fig1_title,
+        labels= {
+            'ACTIVE_CASES': fig1_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    
+    fig2 = px.bar(
+        df, 
+        x="PHU_NAME", 
+        y="RESOLVED_CASES", 
+        color = "PHU_NAME", 
+        title=fig2_title,
+        labels= {
+            'RESOLVED_CASES': fig2_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    fig3 = px.bar(
+        df, 
+        x="PHU_NAME", 
+        y="DEATHS", 
+        color = "PHU_NAME", 
+        title=fig3_title,
+        labels= {
+            'DEATHS': fig3_yaxis,
+            "PHU_NAME": "Region"
+        }
+    )
+    
+    return fig1, fig2, fig3
+    
 
 
 

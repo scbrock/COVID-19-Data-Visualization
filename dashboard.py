@@ -116,9 +116,9 @@ app.layout = html.Div([
                          columns=[{"name": i, "id": i}
                                   for i in table.columns],
                          data=table.to_dict('records'),
-                         style_cell=dict(textAlign='left'),
-                         style_header=dict(backgroundColor="paleturquoise"),
-                         style_data=dict(backgroundColor="lavender"))
+                         style_cell={'textAlign':'left', 'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
+                         style_header={'backgroundColor':'rgb(30, 30, 30)', 'fontWeight': 'bold'},
+                         )
 
 
 ])

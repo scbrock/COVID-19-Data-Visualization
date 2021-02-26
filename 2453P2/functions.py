@@ -20,7 +20,8 @@ def clean_region(data_input):
     data = data[cols]
     
     # fix FILE_DATE
-    data['FILE_DATE'] = [str(datetime.datetime.strptime(str(s), '%Y%m%d').date()) for s in data['FILE_DATE']]
+    #print('type of file date', data['FILE_DATE'][0])
+    data['FILE_DATE'] = [str(datetime.datetime.strptime(str(s), '%Y-%m-%d').date()) for s in data['FILE_DATE']]
     data = data.rename({'FILE_DATE': "DATE"}, axis='columns')
     data = data.sort_values(['PHU_NAME', 'DATE'])
     return data

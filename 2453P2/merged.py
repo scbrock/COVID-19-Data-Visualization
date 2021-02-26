@@ -77,13 +77,15 @@ fig2.layout.updatemenus[0].buttons[0].args[1]['transition']['duration'] = 5
 # --------------Stephen's Data and Plot-------------------------------------------
 # ------------------------------------------------------------------------------
 # ontario testing data
-data_s = pd.read_csv('data/percent_positive_by_agegrp.csv')
+#data_s = pd.read_csv('data/percent_positive_by_agegrp.csv')
+data_s = pd.read_csv('https://data.ontario.ca/dataset/ab5f4a2b-7219-4dc7-9e4d-aa4036c5bf36/resource/05214a0d-d8d9-4ea4-8d2a-f6e3833ba471/download/percent_positive_by_agegrp.csv')
 data_s['DATE'] = pd.to_datetime(data_s['DATE'])
 
 # import ontario region data
-odata = pd.read_csv('data/on_cases_by_region.csv')
+#odata = pd.read_csv('data/on_cases_by_region.csv')
 # clean on_cases by region
-odata = pd.read_csv('data/on_cases_by_region.csv')
+#odata = pd.read_csv('data/on_cases_by_region.csv')
+odata = pd.read_csv('https://data.ontario.ca/dataset/1115d5fe-dd84-4c69-b5ed-05bf0c0a0ff9/resource/d1bfe1ad-6575-4352-8302-09ca81f7ddfc/download/cases_by_status_and_phu.csv')
 odata = clean_region(odata)
 odata = daily_rec_deaths(odata)
 news_df = get_news_table()
@@ -108,7 +110,7 @@ app.layout = dbc.Container([
     
     # row1 This is the title
     dbc.Row(
-        dbc.Col(html.H1("COVID19 Dashboard",
+        dbc.Col(html.H1("COVID-19 Dashboard",
                         className='text-center text-primary mb-4'))
     ),
     
@@ -141,6 +143,8 @@ app.layout = dbc.Container([
         ], width={'size':5}), # end of column
         
         dbc.Col([
+            html.H1('News Feed'),
+
             dash_table.DataTable(
                     id='news_table',
                     columns=[{"name": i, "id": i} for i in news_df.columns],
@@ -157,7 +161,16 @@ app.layout = dbc.Container([
                         'fontWeight': 'bold',
                         'font-size':'16px'
                     },
+                ),
+            html.Div([
+                dcc.Link(
+                    id='news_link', 
+                    children=['Source: Global News Canada'], 
+                    href='https://globalnews.ca/news/6859636/ontario-coronavirus-timeline/',
+                    target='_blank',
+                    style={'color':'black'}
                 )
+            ], style={'font-size':'14px'}),
          ], width={'size':7}), #end of column
         
     ],justify="start"), # end of row
@@ -241,8 +254,6 @@ app.layout = dbc.Container([
     #row 6
     dbc.Row([
         dbc.Col([
-            
-            
             html.H3('Select Age Group(s)', style={'padding-left':"40px"}),
             dcc.Dropdown(id="age_group",
                 options=my_options,
@@ -290,11 +301,10 @@ app.layout = dbc.Container([
     # ROW 7
     dbc.Row([
         dbc.Col([
-            #html.H3('Plot 1'),
             html.Br(),
-            dcc.Graph(id='placeholder', figure={}
-                        )
-        ], style={"padding-left":"40px"}, className="six columns"),
+            #html.H3('Daily Recovered'),
+            dcc.Graph(id='graph_animate', figure={})
+        ], style={}, className="six columns"),
         
         dbc.Col([
             dcc.Tabs([
@@ -338,7 +348,7 @@ app.layout = dbc.Container([
                                 'RESOLVED_CASES': "Number of Resolved Cases"
                             }
                         ))
-        ], style={"padding-left":"40px"}, className="six columns"),
+        ], className="six columns"),
         
         dbc.Col([
             dcc.Tabs([
@@ -368,12 +378,11 @@ app.layout = dbc.Container([
 
     # Row 9 - deaths by day
     dbc.Row([
-        
         dbc.Col([
             html.Br(),
             #html.H3('Daily Recovered'),
             dcc.Graph(id='graph6', figure={})
-        ], style={"padding-left":"40px"}, className="six columns"),
+        ], className="six columns"),
 
     
         dbc.Col([
@@ -384,18 +393,18 @@ app.layout = dbc.Container([
     ], align='start'),
 
     # Row 10 - animation
-    dbc.Row([
-        dbc.Col([
-            html.Br(),
-            #html.H3('Daily Recovered'),
-            dcc.Graph(id='graph_animate', figure={})
-        ], style={}, className="six columns"),
-        dbc.Col([
-            html.Br(),
-            #html.H3('Daily Recovered'),
-            dcc.Graph(id='graph_animate2', figure={})
-        ], style={}, className="six columns"),
-    ], align='start')
+    # dbc.Row([
+    #     dbc.Col([
+    #         html.Br(),
+    #         #html.H3('Daily Recovered'),
+    #         dcc.Graph(id='graph_animate', figure={})
+    #     ], style={}, className="six columns"),
+    #     dbc.Col([
+    #         html.Br(),
+    #         #html.H3('Daily Recovered'),
+    #         dcc.Graph(id='graph_animate2', figure={})
+    #     ], style={}, className="six columns"),
+    # ], align='start')
 
 ], fluid=True)
 
@@ -482,7 +491,8 @@ def update_graph_date(option_slctd, start, end):
             labels = {
                 'DATE': 'Date',
                 'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
-            }
+            },
+            template='plotly_dark'
         )
 
 
@@ -495,10 +505,17 @@ def update_graph_date(option_slctd, start, end):
             x='percent_positive_7d_avg',
             y='age_category',
             color='age_category',
-            title='Percent_positive',
+            title='Percent Positive',
             animation_frame='DATE',
             animation_group='age_category',
-            range_x=[0.0,0.10]
+            range_x=[0.0,0.10],
+            labels = {
+                'DATE': 'Date',
+                'age_category': 'Age Category',
+                'Percent_positive': 'Percent Positive',
+                'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
+            },
+            template='plotly_dark'
         )
 
     # fig2 = px.line(
@@ -592,7 +609,8 @@ def graph2(regions, start, end, is_100k):
             'DATE': 'Date',
             'ACTIVE_CASES': fig1_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     fig2 = px.line(
         data_frame = df,
@@ -604,7 +622,8 @@ def graph2(regions, start, end, is_100k):
             'DATE': 'Date',
             'RESOLVED_CASES': fig2_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     fig3 = px.line(
         data_frame = df,
@@ -616,7 +635,8 @@ def graph2(regions, start, end, is_100k):
             'DATE': 'Date',
             'DEATHS': fig3_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     
     fig4 = px.line(
@@ -629,7 +649,8 @@ def graph2(regions, start, end, is_100k):
             'DATE': 'Date',
             'DAILY_DEATHS': "Daily Number of Fatal Cases",
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     
     fig5 = px.line(
@@ -642,7 +663,8 @@ def graph2(regions, start, end, is_100k):
             'DATE': 'Date',
             'DAILY_RECOVERED': "Daily Number of Recovered Cases",
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     
     
@@ -703,7 +725,8 @@ def build_bars(regions, is_100k):
         labels= {
             'ACTIVE_CASES': fig1_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     
     fig2 = px.bar(
@@ -715,7 +738,8 @@ def build_bars(regions, is_100k):
         labels= {
             'RESOLVED_CASES': fig2_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     fig3 = px.bar(
         df, 
@@ -726,7 +750,8 @@ def build_bars(regions, is_100k):
         labels= {
             'DEATHS': fig3_yaxis,
             "PHU_NAME": "Region"
-        }
+        },
+        template='plotly_dark'
     )
     
     return fig1, fig2, fig3

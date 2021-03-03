@@ -31,23 +31,43 @@ from functions import *
 # --------------Kexin's Data and Plots-------------------------------------------
 # ------------------------------------------------------------------------------
 # Import and clean data (importing csv into pandas)
-status = pd.read_csv("data/covid19ON.csv")
-vaccine = pd.read_csv("data/vaccine_doses.csv")
+url = "https://data.ontario.ca/dataset/f4f86e54-872d-43f8-8a86-3892fd3cb5e6/resource/ed270bb8-340b-41f9-a7c6-e8ef587e6d11/download/covidtesting.csv"
+status = pd.read_csv(url)
+url = "https://data.ontario.ca/dataset/752ce2b7-c15a-4965-a3dc-397bf405e7cc/resource/8a89caa9-511c-4568-af89-7f2174b4378c/download/vaccine_doses.csv"
+vaccine = pd.read_csv(url)
 
 status = status[["Reported Date", "Confirmed Positive", "Resolved", "Deaths", "Total Cases"]]
-status["Reported Date"] = pd.to_datetime(status["Reported Date"])
+status["Reported Date"] = pd.to_datetime(status["Reported Date"]).dt.date
+status = status.rename(columns={"Confirmed Positive":"Active Cases", "Total Cases":"Confirmed Positive"})
+
+# Calculate daily cases
+daily_status = status[["Active Cases", "Confirmed Positive", "Resolved", "Deaths"]].diff()
+daily_status["Reported Date"] = status["Reported Date"]
+
 
 # table Info
-vaccine["report_date"] = pd.to_datetime(vaccine["report_date"])
-vaccine_latest = list([vaccine["total_doses_administered"].values[-1],
-                       vaccine["total_individuals_fully_vaccinated"].values[-1]])
+vaccine["report_date"] = pd.to_datetime(vaccine["report_date"]).dt.date
+mod_vaccine = vaccine.tail(2)[["total_doses_administered", "total_individuals_fully_vaccinated"]]
+mod_vaccine["total_doses_administered"] = [int(data.replace(",", "")) for data in mod_vaccine["total_doses_administered"]]
+mod_vaccine["total_individuals_fully_vaccinated"] = [int(data.replace(",", "")) for data in mod_vaccine["total_individuals_fully_vaccinated"]]
+
+vaccine_latest = list([mod_vaccine["total_doses_administered"].values[-1],
+                       mod_vaccine["total_individuals_fully_vaccinated"].values[-1]])
 status_latest = list([status["Reported Date"].values[-1],
-                      status["Total Cases"].values[-1],
+                      status["Active Cases"].values[-1],
                       status["Confirmed Positive"].values[-1]])
 
-table = pd.DataFrame(columns=["Reported Date", "Total Confirmed Cases", "Current Confirmed Cases",
+table = pd.DataFrame(columns=["Reported Date", "Total Active Cases", "Total Confirmed Cases",
                               "Total Administered Doses", "Total Completed Vaccination"])
 table.loc[0] = status_latest + vaccine_latest
+
+diff_vaccine = mod_vaccine.diff()
+
+table.loc[1] = ["Change from the previous day",
+                daily_status["Active Cases"].values[-1],
+                daily_status["Confirmed Positive"].values[-1],
+                diff_vaccine["total_doses_administered"].values[-1],
+                diff_vaccine["total_individuals_fully_vaccinated"].values[-1]]
 
 
 
@@ -70,7 +90,8 @@ active_map = px.choropleth(regions,
                            color="Active Cases",
                            locations="PHU_NUM",
                            featureidkey="properties.PHU_ID",
-                           color_continuous_scale="mint")
+                           color_continuous_scale="darkmint",
+                           template='plotly_dark')
 active_map.update_geos(fitbounds='locations', visible=False)
 active_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 
@@ -79,7 +100,8 @@ resolved_map = px.choropleth(regions,
                              color="Resolved Cases",
                              locations="PHU_NUM",
                              featureidkey="properties.PHU_ID",
-                             color_continuous_scale="mint")
+                             color_continuous_scale="darkmint",
+                             template='plotly_dark')
 resolved_map.update_geos(fitbounds='locations', visible=False)
 resolved_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 
@@ -88,7 +110,8 @@ deaths_map = px.choropleth(regions,
                            color="Deaths",
                            locations="PHU_NUM",
                            featureidkey="properties.PHU_ID",
-                           color_continuous_scale="mint")
+                           color_continuous_scale="darkmint",
+                           template='plotly_dark')
 deaths_map.update_geos(fitbounds='locations', visible=False)
 deaths_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 
@@ -161,14 +184,25 @@ app.layout = dbc.Container([
     
     # row1 This is the title
     dbc.Row(
-        dbc.Col(html.H1("COVID-19 Dashboard",
+        dbc.Col(html.H1("COVID-19 in Ontario",
                         className='text-center text-primary mb-4'))
     ),
-    
+
     # row2
-   # dbc.Row(
-   #     dbc.Col(table1)
-    #    ),
+   dbc.Row([
+       # table
+       dbc.Col([
+           html.H2('Summary', style={'color': 'white'}),
+           dash_table.DataTable(id="vaccine_table",
+                                    columns=[{"name": i, "id": i}
+                                             for i in table.columns],
+                                    data=table.to_dict('records'),
+                                    style_cell={'textAlign': 'left', 'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
+                                    style_header={'backgroundColor': 'rgb(30, 30, 30)', 'fontWeight': 'bold'}
+                                    )]
+       ),
+
+       ]),
     
     html.Br(),
     
@@ -176,25 +210,27 @@ app.layout = dbc.Container([
     dbc.Row([
         
         dbc.Col([
-            
+
+            html.H2('Ontario Daily Status', style={'color': 'white'}),
             ## drop down
-            dcc.Dropdown(id="line_selection",
-                 options=[
-                     {"label": "Total Cases", "value": "Total Cases"},
-                     {"label": "Confirmed Cases", "value": "Confirmed Positive"},
-                     {"label": "Resolved Cases", "value": "Resolved"},
-                     {"label": "Deaths", "value": "Deaths"}],
-                 multi=False,
-                 value="Total Cases",
-                 style={'width': "40%"}
-                 ),
+            dcc.Dropdown(id="line_option",
+                         options=[
+                             {"label": "Confirmed Cases", "value": "Confirmed Positive"},
+                             {"label": "Resolved Cases", "value": "Resolved"},
+                             {"label": "Deaths", "value": "Deaths"}],
+                         multi=False,
+                         value="Confirmed Positive",
+                         style={'width': "60%"}
+                         ),
+
+            html.Br(),
             
             ## graph
             dcc.Graph(id='line_chart', figure={})
         ], width={'size':5},className='text-dark'), # end of column
-        
+
         dbc.Col([
-            html.H1('News Feed'),
+            html.H2('News Feed', style={'color': 'white'}),
 
             dash_table.DataTable(
                     id='news_table',
@@ -203,24 +239,30 @@ app.layout = dbc.Container([
                     style_table={},
                     fixed_rows={'headers': True},
                     style_cell={
-                        'maxWidth':'500px', 'textAlign': 'left', 'font-family':'sans-serif'
+                        'maxWidth':'500px',
+                        'textAlign': 'left',
+                        'font-family':'sans-serif',
+                        'backgroundColor': 'rgb(50, 50, 50)',
+                        'color': 'white'
                     },
                     style_data={
                         'whiteSpace':'normal', 'height':'auto', 'font-size':'14px'
                     },
                     style_header={
                         'fontWeight': 'bold',
-                        'font-size':'16px'
+                        'font-size':'16px',
+                        'backgroundColor': 'rgb(30, 30, 30)'
                     },
                 ),
 
          ], width={'size':7},className='text-dark'), #end of column
-        
+
+
     ],align='end'), # end of row
 
     html.Br(),
-    
-   dbc.Row( 
+
+    dbc.Row(
         html.Div([
         dcc.Link(
             id='news_link', 
@@ -231,45 +273,11 @@ app.layout = dbc.Container([
         )
     ], style={'font-size':'14px'}),
         justify="end"),
-    
-    #row4
-    dbc.Row([
 
-        dbc.Col([
-            dcc.Dropdown(id="slct_impact",
-                 options=[{"label": x, "value":x} for x in region],
-                 value="TORONTO",multi=False,
-                 style={"width": "50%"}),
-            
-            html.Br(),
-   
-            dcc.Graph(id='my_bee_map', figure={})
-            ], width={'size':12, 'order':1},
-        ),
-
-    ], no_gutters=False, justify='start'),  # Horizontal:start,center,end,between,around
-    
-    
-    html.Br(),
-    
-    #row5
     dbc.Row([
         dbc.Col([
-            html.P("Dashboard for monitiorng covid19 in Ontario:",
-                   style={"textDecoration": "underline"}),
-            dcc.Markdown('''
-                    * Language: Python, Dash, Plotly
-                    * Data Source:
-                      * Ontario data Source:
-                    * Github: https://github.com/scbrock/COVID-19-Data-Visualization
-                    * Reference:
-                    *
-                    ''') ,
-                                
-        ], width={'size':4},
-         ),
-        dbc.Col([
-            
+            html.H2('Public Health Region Spread', style={'color': 'white'}),
+
             dcc.Tabs([
                 dcc.Tab(label='Active Cases', children=[
                     dcc.Graph(
@@ -289,30 +297,44 @@ app.layout = dbc.Container([
                         figure=deaths_map
                     )
                 ]),
+            ]),
+
+        ], style={}, className='six columns text-dark'),
+
+        dbc.Col([
+            html.H2('Public Health Region Status Info', style={'color': 'white'}),
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='graph2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='graph3',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='graph4',
+                        figure={}
+                    )
+                ]),
             ])
         ], style={}, className='six columns text-dark')
-        
-    ], align="start"),
-                         
-    html.Br(),                     # Vertical: start, center, end
-    
+    ]),
 
-    #row 6
+    html.Br(),
+
     dbc.Row([
-        # Col1
-        dbc.Col([
-            html.H3('Select Age Group(s)', style={'padding-left':"40px"}),
-            dcc.Dropdown(id="age_group",
-                options=my_options,
-                multi=True,
-                value=[my_options[0]['value']],
-                style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
-                className='text-dark'
-            ),
-            html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
-        ], className="three columns"),
-        
+        html.H2('Daily Cases Break down', style={'color': 'white'}),
+    ]),
     
+    #row5
+    dbc.Row([
+
         dbc.Col([
             html.H3('Select Date Range'),
             dcc.DatePickerRange(
@@ -323,6 +345,7 @@ app.layout = dbc.Container([
                 style = {'width': "100%", "display":"inline-block"}
             )
         ], className="three columns"),
+
         dbc.Col([
             html.H3('Select Region(s)', style={'padding-left':"0px"}),
             dcc.Dropdown(id="region_select",
@@ -331,29 +354,27 @@ app.layout = dbc.Container([
                 value=[region_options[0]['value']],
                 style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
                 className='text-dark'
-            )
+            ),
+
         ], className="three columns"),
+
         dbc.Col([
             html.H3('Options', style={'padding-left':"0px"}),
             dcc.Checklist(
                 id="per100k",
                 options=[
-                    {'label': 'Count per 100,000 people (not including daily resolved or fatal cases)', 'value': '100k'},
+                    {'label': 'Count per 100,000 people (not including daily resolved or fatal cases)', 'value': '100k'}
                 ],
                 value=[],
                 style={'font-size':'12px'}
-            )  
+            )
         ], className="three columns"),
-    ], align='start'),
 
-    # ROW 7
+    ], align="start"),
+                         
+    html.Br(),                     # Vertical: start, center, end
+
     dbc.Row([
-        dbc.Col([
-            html.Br(),
-            #html.H3('Daily Recovered'),
-            dcc.Graph(id='graph_animate', figure={})
-        ], style={}, className="six columns"),
-        
         dbc.Col([
             dcc.Tabs([
                 dcc.Tab(label='Active Cases', children=[
@@ -376,69 +397,94 @@ app.layout = dbc.Container([
                 ]),
             ])
         ], style={}, className='six columns text-dark')
+    ]),
 
-
-    ], align='end'),
-
-    # ROW 8 - testing and active
-    dbc.Row([
-        dbc.Col([
-            #html.H3('Plot 1'),
-            html.Br(),
-            dcc.Graph(id='graph1', figure=px.line(
-                            data_frame = odata,
-                            x = 'DATE',
-                            y = 'RESOLVED_CASES',
-                            color = 'PHU_NAME',
-                            title="Active Cases vs Date",
-                            labels = {
-                                'DATE': 'Date',
-                                'RESOLVED_CASES': "Number of Resolved Cases"
-                            }
-                        ))
-        ], className="six columns"),
-        
-        dbc.Col([
-            dcc.Tabs([
-                dcc.Tab(label='Active Cases', children=[
-                    dcc.Graph(
-                        id='graph2',
-                        figure={}
-                    )
-                ]),
-                dcc.Tab(label='Resolved Cases', children=[
-                    dcc.Graph(
-                        id='graph3',
-                        figure={}
-                    )
-                ]),
-                dcc.Tab(label='Fatal Cases', children=[
-                    dcc.Graph(
-                        id='graph4',
-                        figure={}
-                    )
-                ]),
-            ])
-        ], style={}, className='six columns text-dark')
-
-
-    ], align='end'),
+    html.Br(),
 
     # Row 9 - deaths by day
     dbc.Row([
         dbc.Col([
             html.Br(),
-            #html.H3('Daily Recovered'),
+            # html.H3('Daily Recovered'),
             dcc.Graph(id='graph6', figure={})
         ], className="six columns"),
 
-    
         dbc.Col([
             html.Br(),
-            #html.H3('Fatalities'),
+            # html.H3('Fatalities'),
             dcc.Graph(id='graph5', figure={})
         ], className="six columns")
     ], align='end'),
+
+    html.Br(),
+
+    #row 6
+    dbc.Row([
+        # Col1
+        dbc.Col([
+            html.H3('Select Age Group(s)', style={'padding-left':"40px"}),
+            dcc.Dropdown(id="age_group",
+                options=my_options,
+                multi=True,
+                value=[my_options[0]['value']],
+                style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
+                className='text-dark'
+            ),
+            html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
+        ], className="three columns"),
+
+        dbc.Col([
+            html.H3('Select A Region', style={'padding-left':"40px"}),
+            dcc.Dropdown(id="slct_impact",
+                         options=[{"label": x, "value": x} for x in region],
+                         value="TORONTO", multi=False,
+                         style={"width": "50%"},
+                         className='text-dark'
+                         )
+            ])
+
+
+    ], align='start'),
+
+    html.Br(),
+
+    # ROW 7
+    dbc.Row([
+
+        dbc.Col([
+            html.H2('Positive Rate in Age Groups', style={'color': 'white'}),
+            html.Br(),
+            #html.H3('Daily Recovered'),
+            dcc.Graph(id='graph_animate', figure={}),
+        ], style={}, className="six columns"),
+
+        dbc.Col([
+            html.H2('Hospitalization', style={'color': 'white'}),
+            html.Br(),
+            dcc.Graph(id='my_bee_map', figure={})
+        ], width={'size': 12, 'order': 1},
+        ),
+
+    ], align='end'),
+
+    html.Br(),
+
+    dbc.Row([
+        dbc.Col([
+            html.P("Dashboard for monitiorng covid19 in Ontario:",
+                   style={"textDecoration": "underline"}),
+            dcc.Markdown('''
+                    * Language: Python, Dash, Plotly
+                    * Data Source:
+                      * Ontario data Source:
+                    * Github: https://github.com/scbrock/COVID-19-Data-Visualization
+                    * Reference:
+                    *
+                    '''),
+
+        ], width={'size': 4},
+        ),
+    ])
 
 
 ], fluid=True)
@@ -470,29 +516,25 @@ def update_graph(option_slctd):
         template='plotly_dark'
     )
 
-    return  fig
+    return fig
 
 
 # ------------------------------------------------------------------------------
 # Connect the Plotly graphs with Dash Components
 @app.callback(
     Output(component_id='line_chart', component_property='figure'),
-    [Input(component_id='line_selection', component_property='value')]
+    [Input(component_id='line_option', component_property='value')]
 )
-def update_graph2(line_selected):
+def update_graph2(line_option):
 
-    df1 = status.copy()
-    df1 = df1[["Reported Date", line_selected]]
+    fig = px.line(daily_status, x="Reported Date", y=line_option, template='plotly_dark')
 
-    fig1 = px.line(df1, x="Reported Date", y=line_selected)
-
-    return fig1
+    return fig
 
 
 # Callback for the dropdown menu used for regional data and testing
 @app.callback(
     [Output(component_id='select_ref', component_property='children'),
-     Output(component_id='graph1', component_property='figure'),
      Output(component_id='graph_animate', component_property='figure')],
     [Input(component_id='age_group', component_property='value'),
      Input(component_id='date-picker-range', component_property='start_date'),
@@ -512,27 +554,6 @@ def update_graph_date(option_slctd, start, end):
     df = data_s[(data_s['age_category'].isin(option_slctd)) & (data_s['DATE'] >= sdt) & (data_s['DATE'] <= edt)] #.groupby('DATE').sum().reset_index()
     df = df.sort_values('DATE')
     #print(df.head())
-
-    if df.shape[0] == 0:
-        fig = px.line()
-        return select_ref, px.line(), {}
-    else:
-        fig = px.line(
-            data_frame = df,
-            x = 'DATE',
-            y = 'percent_positive_7d_avg',
-            color = 'age_category',
-            title="Percent Positive",
-            labels = {
-                'DATE': 'Date',
-                'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
-            },
-            template='plotly_dark'
-        )
-
-
-    fig.update_xaxes(tickangle=90, nticks=20)
-    #fig.update_layout(width=int(700))
 
     df['DATE'] = df['DATE'].astype(str)
     fig2 = px.bar(
@@ -581,7 +602,7 @@ def update_graph_date(option_slctd, start, end):
     
     #fig2 = {}
 
-    return select_ref, fig, fig2
+    return select_ref, fig2
 
 
 

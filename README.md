@@ -6,11 +6,10 @@ Please clone this code files via the follwoing commands or the way you prefer.
 ```
 git clone https://github.com/scbrock/COVID-19-Data-Visualization.git
 ```
-Then run the merged.py locally to start the Dashboard. After running the Python file, a localhost address will be generated. Please copy the address to Chrome browser.
-The check list of neccessary packages is provided in the requirement.txt.
+Then run the merged.py locally to start the Dashboard. (The check list of neccessary packages is provided in the requirement.txt.)
 ```
 python3 merged.py 
 ```
-
+After running the Python file, a localhost address will be generated. Please copy the address to Chrome browser. 
 ## Usage
 Here is supposed to be some screenshots and other description for the dashboard.

@@ -6,7 +6,7 @@ Please clone this code files via the follwoing commands or the way you prefer.
 ```
 git clone https://github.com/scbrock/COVID-19-Data-Visualization.git
 ```
-Then run the merged.py locally to start the Dashboard. (The check list of neccessary packages is provided in the requirement.txt.)
+Then run the merged.py locally to start the Dashboard. 
 ```
 python3 merged.py 
 ```

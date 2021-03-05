@@ -13,3 +13,4 @@ python3 merged.py
 After running the Python file, a localhost address such as http://localhost:8000 will be generated. Please copy the address to Chrome browser. 
 ## Usage
 Here is supposed to be some screenshots and other description for the dashboard.
+![Alt text](relative/path/to/123.jpg?raw=true "Title")

@@ -185,7 +185,8 @@ app.layout = dbc.Container([
     # row1 This is the title
     dbc.Row(
         dbc.Col(html.H1("COVID-19 in Ontario",
-                        className='text-center text-primary mb-4'))
+                        style={'color': 'white',
+                               'textAlign': 'center'}))
     ),
 
     # row2
@@ -194,15 +195,14 @@ app.layout = dbc.Container([
        dbc.Col([
            html.H2('Summary', style={'color': 'white'}),
            dash_table.DataTable(id="vaccine_table",
-                                    columns=[{"name": i, "id": i}
-                                             for i in table.columns],
-                                    data=table.to_dict('records'),
-                                    style_cell={'textAlign': 'left', 'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
-                                    style_header={'backgroundColor': 'rgb(30, 30, 30)', 'fontWeight': 'bold'}
-                                    )]
-       ),
-
+                                columns=[{"name": i, "id": i}
+                                         for i in table.columns],
+                                data=table.to_dict('records'),
+                                style_cell={'textAlign': 'left', 'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
+                                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'fontWeight': 'bold'}
+                                )
        ]),
+   ]),
     
     html.Br(),
     
@@ -329,25 +329,25 @@ app.layout = dbc.Container([
     html.Br(),
 
     dbc.Row([
-        html.H2('Daily Cases Break down', style={'color': 'white'}),
+        dbc.Col([html.H2('Daily Cases Break down', style={'color': 'white'})])
     ]),
     
     #row5
     dbc.Row([
 
         dbc.Col([
-            html.H3('Select Date Range'),
+            html.H3('Select Date Range', style={'padding-left':"40px"}),
             dcc.DatePickerRange(
                 id='date-picker-range',
                 start_date=date(2020, 1, 1),
                 end_date=date(2020, 12, 1),
                 end_date_placeholder_text='Select a date!',
-                style = {'width': "100%", "display":"inline-block"}
+                style = {'width': "100%", "display":"inline-block", 'padding-left':"40px"}
             )
         ], className="three columns"),
 
         dbc.Col([
-            html.H3('Select Region(s)', style={'padding-left':"0px"}),
+            html.H3('Select Region(s)', style={'padding-left':"40px"}),
             dcc.Dropdown(id="region_select",
                 options=region_options,
                 multi=True,
@@ -359,14 +359,14 @@ app.layout = dbc.Container([
         ], className="three columns"),
 
         dbc.Col([
-            html.H3('Options', style={'padding-left':"0px"}),
+            html.H3('Options', style={'padding-left':"40px"}),
             dcc.Checklist(
                 id="per100k",
                 options=[
                     {'label': 'Count per 100,000 people (not including daily resolved or fatal cases)', 'value': '100k'}
                 ],
                 value=[],
-                style={'font-size':'12px'}
+                style={'font-size':'12px', 'padding-left':"40px"}
             )
         ], className="three columns"),
 
@@ -422,27 +422,17 @@ app.layout = dbc.Container([
     dbc.Row([
         # Col1
         dbc.Col([
+            html.H2('Positive Rate in Age Groups', style={'color': 'white'}),
             html.H3('Select Age Group(s)', style={'padding-left':"40px"}),
             dcc.Dropdown(id="age_group",
                 options=my_options,
                 multi=True,
                 value=[my_options[0]['value']],
-                style={"width":"100%", "display":"inline-block", "padding-left":"40px"},
+                style={"width":"60%", "display":"inline-block", "padding-left":"40px"},
                 className='text-dark'
             ),
             html.Div(id='select_ref', children=[], style={"padding-left":"40px"}),
         ], className="three columns"),
-
-        dbc.Col([
-            html.H3('Select A Region', style={'padding-left':"40px"}),
-            dcc.Dropdown(id="slct_impact",
-                         options=[{"label": x, "value": x} for x in region],
-                         value="TORONTO", multi=False,
-                         style={"width": "50%"},
-                         className='text-dark'
-                         )
-            ])
-
 
     ], align='start'),
 
@@ -452,38 +442,49 @@ app.layout = dbc.Container([
     dbc.Row([
 
         dbc.Col([
-            html.H2('Positive Rate in Age Groups', style={'color': 'white'}),
-            html.Br(),
             #html.H3('Daily Recovered'),
             dcc.Graph(id='graph_animate', figure={}),
-        ], style={}, className="six columns"),
+        ], style={}, className="six columns")
 
-        dbc.Col([
-            html.H2('Hospitalization', style={'color': 'white'}),
-            html.Br(),
-            dcc.Graph(id='my_bee_map', figure={})
-        ], width={'size': 12, 'order': 1},
-        ),
-
-    ], align='end'),
+    ], align='start'),
 
     html.Br(),
 
     dbc.Row([
         dbc.Col([
-            html.P("Dashboard for monitiorng covid19 in Ontario:",
-                   style={"textDecoration": "underline"}),
-            dcc.Markdown('''
-                    * Language: Python, Dash, Plotly
-                    * Data Source:
-                      * Ontario data Source:
-                    * Github: https://github.com/scbrock/COVID-19-Data-Visualization
-                    * Reference:
-                    *
-                    '''),
+            html.H2('Hospitalization', style={'color': 'white'}),
+            html.H3('Select A Region', style={'padding-left':"40px"}),
+            dcc.Dropdown(id="slct_impact",
+                         options=[{"label": x, "value": x} for x in region],
+                         value="TORONTO", multi=False,
+                         style={"width": "50%", "padding-left":"40px"},
+                         className='text-dark'
+                         )
+        ])
+    ]),
 
-        ], width={'size': 4},
-        ),
+    html.Br(),
+
+    dbc.Row([
+        dbc.Col([
+            dcc.Graph(id='my_bee_map', figure={})
+        ], width={'size': 12, 'order': 1},
+        )
+    ]),
+
+    html.Br(),
+
+    dbc.Row([
+        dbc.Col([
+            html.Div([
+                dcc.Markdown('''
+                             Language: Python, Dash, Plotly ||
+                             Data Source: https://covid-19.ontario.ca/data ||
+                             Github: https://github.com/scbrock/COVID-19-Data-Visualization
+                             ''',
+                            )
+            ], style={'textAlign': 'center'})
+        ])
     ])
 
 

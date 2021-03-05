@@ -6,7 +6,7 @@ Please clone this code files via the follwoing commands or the way you prefer.
 ```
 git clone https://github.com/scbrock/COVID-19-Data-Visualization.git
 ```
-Then run the merged.py locally to start the Dashboard. 
+Then run the merged.py under the Covid-19-Data-Visulization folder to start the Dashboard. 
 ```
 python3 merged.py 
 ```

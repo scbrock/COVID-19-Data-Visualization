@@ -184,7 +184,7 @@ app.layout = dbc.Container([
     
     # row1 This is the title
     dbc.Row(
-        dbc.Col(html.H1("COVID-19 in Ontario",
+        dbc.Col(html.H1("Ontario COVID-19 Spotlight",
                         style={'color': 'white',
                                'textAlign': 'center'}))
     ),

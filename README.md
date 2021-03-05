@@ -1,7 +1,7 @@
 # Covid-19-Data-Visulization
 In this project, we implemented a Dashboard to visualize the data of Covid-19 in Ontario from various perspectives including summary statistics, plots, and a news feed. For instance, we provide statisitcs of infected cases, recovered cases based on the public health unit, and the visulization of vaccination cases. The objective is to privide the general public and decison makers with a overview of covid-19 situation.
 
-The dashboard is mainly developed in Python3 including libraries such as Dash, Dash Bootstrap, BeautifulSoup, etc. Here is a requirement.txt list the Python version and the libraries we used. Please refer to it, if you can not run the Dashboard.
+The Dashboard is mainly developed in Python3 including libraries such as Dash, Dash Bootstrap, BeautifulSoup, etc. Here is a requirement.txt list the Python version and the libraries we used. Please refer to it, if you can not run the Dashboard.
 
 
 

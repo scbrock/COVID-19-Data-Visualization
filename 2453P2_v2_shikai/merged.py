@@ -330,7 +330,7 @@ app.layout = dbc.Container([
 
     # row6
     dbc.Row([
-        dbc.Col([html.H2('Daily Cases Break down', style={'color': 'white'})])
+        dbc.Col([html.H2('Daily Cases Breakdown', style={'color': 'white'})])
     ]),
     
     # row7

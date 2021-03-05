@@ -12,5 +12,6 @@ python3 merged.py
 ```
 After running the Python file, a localhost address such as http://localhost:8000 will be generated. Please copy the address to Chrome browser. 
 ## Usage
-Here is supposed to be some screenshots and other description for the dashboard.
+When using the dashboard, it may take a while to render the page, please don't worry about it. There are several interactive plots where we provide dropdown menus and tabs, etc. To visualize the data in a specific region, please delete the "all" box first. Then add the regions you want. 
+
 ![Alt text](https://github.com/scbrock/COVID-19-Data-Visualization/blob/main/screenshot.png)

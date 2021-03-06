@@ -31,11 +31,15 @@ from functions import *
 # --------------Kexin's Data and Plots-------------------------------------------
 # ------------------------------------------------------------------------------
 # Import and clean data (importing csv into pandas)
+
+# confirmed cases, resolved cases, deaths
 url = "https://data.ontario.ca/dataset/f4f86e54-872d-43f8-8a86-3892fd3cb5e6/resource/ed270bb8-340b-41f9-a7c6-e8ef587e6d11/download/covidtesting.csv"
 status = pd.read_csv(url)
+# vaccine data
 url = "https://data.ontario.ca/dataset/752ce2b7-c15a-4965-a3dc-397bf405e7cc/resource/8a89caa9-511c-4568-af89-7f2174b4378c/download/vaccine_doses.csv"
 vaccine = pd.read_csv(url)
 
+# select required columns and rename them
 status = status[["Reported Date", "Confirmed Positive", "Resolved", "Deaths", "Total Cases"]]
 status["Reported Date"] = pd.to_datetime(status["Reported Date"]).dt.date
 status = status.rename(columns={"Confirmed Positive":"Active Cases", "Total Cases":"Confirmed Positive"})
@@ -46,6 +50,7 @@ daily_status["Reported Date"] = status["Reported Date"]
 
 
 # table Info
+# get total_doses_administered and total_individuals_fully_vaccinated which shown in summary table
 vaccine["report_date"] = pd.to_datetime(vaccine["report_date"]).dt.date
 mod_vaccine = vaccine.tail(2)[["total_doses_administered", "total_individuals_fully_vaccinated"]]
 mod_vaccine["total_doses_administered"] = [int(data.replace(",", "")) for data in mod_vaccine["total_doses_administered"]]
@@ -53,14 +58,18 @@ mod_vaccine["total_individuals_fully_vaccinated"] = [int(data.replace(",", "")) 
 
 vaccine_latest = list([mod_vaccine["total_doses_administered"].values[-1],
                        mod_vaccine["total_individuals_fully_vaccinated"].values[-1]])
+
+# get date current confirmed cases and total confirmed cases for summary table
 status_latest = list([status["Reported Date"].values[-1],
                       status["Active Cases"].values[-1],
                       status["Confirmed Positive"].values[-1]])
 
+# build the table
 table = pd.DataFrame(columns=["Reported Date", "Total Active Cases", "Total Confirmed Cases",
                               "Total Administered Doses", "Total Completed Vaccination"])
 table.loc[0] = status_latest + vaccine_latest
 
+# calculate the changes from the previous day
 diff_vaccine = mod_vaccine.diff()
 
 table.loc[1] = ["Change from the previous day",
@@ -72,23 +81,33 @@ table.loc[1] = ["Change from the previous day",
 
 
 # map
+# read region cases data
 url = "https://data.ontario.ca/dataset/1115d5fe-dd84-4c69-b5ed-05bf0c0a0ff9/resource/d1bfe1ad-6575-4352-8302-09ca81f7ddfc/download/cases_by_status_and_phu.csv"
 phu_cases = pd.read_csv(url)
-
+# select up to date cases
 phu_cases["FILE_DATE"] = pd.to_datetime(phu_cases["FILE_DATE"])
 dates = phu_cases["FILE_DATE"].values[-1]
 regions = phu_cases[phu_cases["FILE_DATE"] == dates]
 
 regions.columns = ["FILE_DATE", "PHU_NAME", "PHU_NUM", "Active Cases", "Resolved Cases", "Deaths"]
 
+# read phu geojson file
 phu_map = json.load(open("data/ON_PHU.geojson", "r"))
 
 case_name = ["Active Cases", "Resolved Cases", "Deaths"]
 
+# modified geojson file to make PHU_NAME as the feature id
+phu_dict = regions.set_index('PHU_NUM')['PHU_NAME'].to_dict()
+
+for i in range(34):
+    id = phu_map['features'][i]['properties']['PHU_ID']
+    phu_map['features'][i]['properties']['PHU_ID'] = phu_dict[id]
+
+# create active map, resolved map, death map
 active_map = px.choropleth(regions,
                            geojson=phu_map,
                            color="Active Cases",
-                           locations="PHU_NUM",
+                           locations="PHU_NAME",
                            featureidkey="properties.PHU_ID",
                            color_continuous_scale="darkmint",
                            template='plotly_dark')
@@ -98,7 +117,7 @@ active_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 resolved_map = px.choropleth(regions,
                              geojson=phu_map,
                              color="Resolved Cases",
-                             locations="PHU_NUM",
+                             locations="PHU_NAME",
                              featureidkey="properties.PHU_ID",
                              color_continuous_scale="darkmint",
                              template='plotly_dark')
@@ -108,7 +127,7 @@ resolved_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 deaths_map = px.choropleth(regions,
                            geojson=phu_map,
                            color="Deaths",
-                           locations="PHU_NUM",
+                           locations="PHU_NAME",
                            featureidkey="properties.PHU_ID",
                            color_continuous_scale="darkmint",
                            template='plotly_dark')
@@ -190,6 +209,7 @@ app.layout = dbc.Container([
     ),
 
     # row2
+    # Summary table
    dbc.Row([
        # table
        dbc.Col([
@@ -206,9 +226,9 @@ app.layout = dbc.Container([
     
     html.Br(),
     
-    #row3 The new feed
+    #row3
     dbc.Row([
-        
+        # daily status line chart
         dbc.Col([
 
             html.H2('Ontario Daily Status', style={'color': 'white'}),
@@ -229,6 +249,7 @@ app.layout = dbc.Container([
             dcc.Graph(id='line_chart', figure={})
         ], width={'size':5},className='text-dark'), # end of column
 
+        # The new feed
         dbc.Col([
             html.H2('News Feed', style={'color': 'white'}),
 
@@ -262,6 +283,7 @@ app.layout = dbc.Container([
 
     html.Br(),
 
+    # row4
     dbc.Row(
         html.Div([
         dcc.Link(
@@ -274,7 +296,9 @@ app.layout = dbc.Container([
     ], style={'font-size':'14px'}),
         justify="end"),
 
+    # row5
     dbc.Row([
+        # spread map
         dbc.Col([
             html.H2('Public Health Region Spread', style={'color': 'white'}),
 
@@ -299,40 +323,17 @@ app.layout = dbc.Container([
                 ]),
             ]),
 
-        ], style={}, className='six columns text-dark'),
-
-        dbc.Col([
-            html.H2('Public Health Region Status Info', style={'color': 'white'}),
-            dcc.Tabs([
-                dcc.Tab(label='Active Cases', children=[
-                    dcc.Graph(
-                        id='graph2',
-                        figure={}
-                    )
-                ]),
-                dcc.Tab(label='Resolved Cases', children=[
-                    dcc.Graph(
-                        id='graph3',
-                        figure={}
-                    )
-                ]),
-                dcc.Tab(label='Fatal Cases', children=[
-                    dcc.Graph(
-                        id='graph4',
-                        figure={}
-                    )
-                ]),
-            ])
         ], style={}, className='six columns text-dark')
     ]),
 
     html.Br(),
 
+    # row6
     dbc.Row([
-        dbc.Col([html.H2('Daily Cases Break down', style={'color': 'white'})])
+        dbc.Col([html.H2('Daily Cases Breakdown', style={'color': 'white'})])
     ]),
     
-    #row5
+    # row7
     dbc.Row([
 
         dbc.Col([
@@ -374,6 +375,7 @@ app.layout = dbc.Container([
                          
     html.Br(),                     # Vertical: start, center, end
 
+    # row8
     dbc.Row([
         dbc.Col([
             dcc.Tabs([
@@ -392,6 +394,29 @@ app.layout = dbc.Container([
                 dcc.Tab(label='Fatal Cases', children=[
                     dcc.Graph(
                         id='bar3',
+                        figure={}
+                    )
+                ]),
+            ])
+        ], style={}, className='six columns text-dark'),
+
+        dbc.Col([
+            dcc.Tabs([
+                dcc.Tab(label='Active Cases', children=[
+                    dcc.Graph(
+                        id='graph2',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Resolved Cases', children=[
+                    dcc.Graph(
+                        id='graph3',
+                        figure={}
+                    )
+                ]),
+                dcc.Tab(label='Fatal Cases', children=[
+                    dcc.Graph(
+                        id='graph4',
                         figure={}
                     )
                 ]),
@@ -418,7 +443,7 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    #row 6
+    #row10
     dbc.Row([
         # Col1
         dbc.Col([
@@ -438,7 +463,7 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # ROW 7
+    # ROW11
     dbc.Row([
 
         dbc.Col([
@@ -450,6 +475,7 @@ app.layout = dbc.Container([
 
     html.Br(),
 
+    # row12
     dbc.Row([
         dbc.Col([
             html.H2('Hospitalization', style={'color': 'white'}),
@@ -465,6 +491,7 @@ app.layout = dbc.Container([
 
     html.Br(),
 
+    # row13
     dbc.Row([
         dbc.Col([
             dcc.Graph(id='my_bee_map', figure={})
@@ -474,14 +501,16 @@ app.layout = dbc.Container([
 
     html.Br(),
 
+    # row14
     dbc.Row([
         dbc.Col([
             html.Div([
                 dcc.Markdown('''
                              Language: Python, Dash, Plotly ||
-                             Data Source: https://covid-19.ontario.ca/data ||
-                             Github: https://github.com/scbrock/COVID-19-Data-Visualization
-                             ''',
+                             Data Source: [Government of Ontario Data Catalogue](https://data.ontario.ca/dataset?keywords_en=COVID-19), 
+                             [Ontario GeoHub](https://geohub.lio.gov.on.ca/datasets/ministry-of-health-public-health-unit-boundary) ||
+                             All Codes are in [GitHub](https://github.com/scbrock/COVID-19-Data-Visualization) 
+                             '''
                             )
             ], style={'textAlign': 'center'})
         ])

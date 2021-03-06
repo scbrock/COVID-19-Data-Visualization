@@ -166,31 +166,40 @@ fig2.layout.updatemenus[0].buttons[0].args[1]['frame']['duration'] = 30
 fig2.layout.updatemenus[0].buttons[0].args[1]['transition']['duration'] = 5
 
 
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # --------------Stephen's Data and Plot-------------------------------------------
-# ------------------------------------------------------------------------------
-# ontario testing data
-#data_s = pd.read_csv('data/percent_positive_by_agegrp.csv')
+# --------------------------------------------------------------------------------
+# import ontario testing data
 data_s = pd.read_csv('https://data.ontario.ca/dataset/ab5f4a2b-7219-4dc7-9e4d-aa4036c5bf36/resource/05214a0d-d8d9-4ea4-8d2a-f6e3833ba471/download/percent_positive_by_agegrp.csv')
 data_s['DATE'] = pd.to_datetime(data_s['DATE'])
 
 # import ontario region data
-#odata = pd.read_csv('data/on_cases_by_region.csv')
-# clean on_cases by region
-#odata = pd.read_csv('data/on_cases_by_region.csv')
 odata = pd.read_csv('https://data.ontario.ca/dataset/1115d5fe-dd84-4c69-b5ed-05bf0c0a0ff9/resource/d1bfe1ad-6575-4352-8302-09ca81f7ddfc/download/cases_by_status_and_phu.csv')
+
+# clean on_cases by region and extract daily changes
 odata = clean_region(odata)
 odata = daily_rec_deaths(odata)
+
+# build news table
 news_df = get_news_table()
-on_region_pop = pd.read_csv('data/ontario_region_population.csv')
+
+# create a list of regions for filtering dataframes (in dashboard)
 all_regions = odata['PHU_NAME'].unique()
+
+# build options for age_category dropdown menu
 my_options = [{"label":col, "value":col} for col in data_s['age_category'].unique()]
 my_options.insert(0,{'label':'All', "value": 'All'})
+
+# build options for region selection dropdown menu
 region_options = [{"label": name, "value": name} for name in odata['PHU_NAME'].unique()]
 region_options.insert(0,{"label":"All", "value":"All"})
+
+# load ontario region population data and augment ontario dataset
 orpop = pd.read_csv('data/ontario_region_population.csv')
 orpop['Population'] = [int(s.replace(',','')) for s in orpop['Population']]
 odata = odata.merge(right=orpop, how='left', left_on='PHU_NAME', right_on='new_region')
+
+# use mean imputation for missing mappings
 odata['Population'] = odata['Population'].fillna(odata['Population'].mean())
 
 
@@ -201,15 +210,18 @@ odata['Population'] = odata['Population'].fillna(odata['Population'].mean())
 
 app.layout = dbc.Container([
     
-    # row1 This is the title
+    ########################################################
+    #    Row 1: Title
+    ########################################################
     dbc.Row(
         dbc.Col(html.H1("Ontario COVID-19 Spotlight",
                         style={'color': 'white',
                                'textAlign': 'center'}))
     ),
 
-    # row2
-    # Summary table
+    ########################################################
+    #    Row 2: Summary Table
+    ########################################################
    dbc.Row([
        # table
        dbc.Col([
@@ -226,7 +238,9 @@ app.layout = dbc.Container([
     
     html.Br(),
     
-    #row3
+    ########################################################
+    #    Row 3: Ontario Daily Status and News Feed
+    ########################################################
     dbc.Row([
         # daily status line chart
         dbc.Col([
@@ -283,7 +297,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # row4
+    ########################################################
+    #    Row 4: News Feed Source
+    ########################################################
     dbc.Row(
         html.Div([
         dcc.Link(
@@ -296,7 +312,9 @@ app.layout = dbc.Container([
     ], style={'font-size':'14px'}),
         justify="end"),
 
-    # row5
+    ########################################################
+    #    Row 5: Map of Ontario
+    ########################################################
     dbc.Row([
         # spread map
         dbc.Col([
@@ -328,12 +346,16 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # row6
+    ########################################################
+    #    Row 6: Daily Cases Breakdown
+    ########################################################
     dbc.Row([
         dbc.Col([html.H2('Daily Cases Breakdown', style={'color': 'white'})])
     ]),
     
-    # row7
+    ########################################################
+    #    Row 7: Dropdown Menu Selections
+    ########################################################
     dbc.Row([
 
         dbc.Col([
@@ -375,7 +397,9 @@ app.layout = dbc.Container([
                          
     html.Br(),                     # Vertical: start, center, end
 
-    # row8
+    ########################################################
+    #    Row 8: Bar Chart Tabs 
+    ########################################################
     dbc.Row([
         dbc.Col([
             dcc.Tabs([
@@ -426,7 +450,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # Row 9 - deaths by day
+    ########################################################
+    #    Row 9: Daily Deaths and Resolved
+    ########################################################
     dbc.Row([
         dbc.Col([
             html.Br(),
@@ -443,7 +469,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    #row10
+    ########################################################
+    #    Row 10: Positive Testing Rate - Dropdown
+    ########################################################
     dbc.Row([
         # Col1
         dbc.Col([
@@ -463,7 +491,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # ROW11
+    #########################################################
+    #    Row 11: Positive Testing Rate - Dynamic Bar Chart
+    #########################################################
     dbc.Row([
 
         dbc.Col([
@@ -475,7 +505,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # row12
+    ########################################################
+    #    Row 12: Hospitalizations Dropdown
+    ########################################################
     dbc.Row([
         dbc.Col([
             html.H2('Hospitalization', style={'color': 'white'}),
@@ -491,7 +523,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # row13
+    ########################################################
+    #    Row 13: Hospitalizations Plot
+    ########################################################
     dbc.Row([
         dbc.Col([
             dcc.Graph(id='my_bee_map', figure={})
@@ -501,7 +535,9 @@ app.layout = dbc.Container([
 
     html.Br(),
 
-    # row14
+    ########################################################
+    #    Row 14: Sources and Links
+    ########################################################
     dbc.Row([
         dbc.Col([
             html.Div([
@@ -562,7 +598,11 @@ def update_graph2(line_option):
     return fig
 
 
-# Callback for the dropdown menu used for regional data and testing
+############################################################################
+#
+#       Callback for the dropdown menu used for regional data and testing
+#
+############################################################################
 @app.callback(
     [Output(component_id='select_ref', component_property='children'),
      Output(component_id='graph_animate', component_property='figure')],
@@ -572,20 +612,33 @@ def update_graph2(line_option):
 )
 
 def update_graph_date(option_slctd, start, end):
+    """
+    Function generate dynamic testing bar chart:
+
+    returns:
+        select_ref - name of the options selected
+        fig2 - dynamic bar chart of positive testing rates by age group
+    """
+
+    # inform user of selection
     select_ref = "The age group chosen by user: {}".format(option_slctd)
     
+    # determine which age groups to display
     if 'All' in option_slctd:
         option_slctd = ['0to13', '14to17', '18to24', '25to64', '65+']
 
-    
+    # date filtering range
     sdt = pd.to_datetime(start)
     edt = pd.to_datetime(end)
     
+    # filter dataframe
     df = data_s[(data_s['age_category'].isin(option_slctd)) & (data_s['DATE'] >= sdt) & (data_s['DATE'] <= edt)] #.groupby('DATE').sum().reset_index()
     df = df.sort_values('DATE')
-    #print(df.head())
 
+    # fix datatype
     df['DATE'] = df['DATE'].astype(str)
+
+    # create bar chart
     fig2 = px.bar(
             df,
             x='percent_positive_7d_avg',
@@ -604,41 +657,7 @@ def update_graph_date(option_slctd, start, end):
             template='plotly_dark'
         )
 
-    # fig2 = px.line(
-    #     df, 
-    #     x="DATE", 
-    #     y="percent_positive_7d_avg", 
-    #     animation_frame="DATE", 
-    #     color = 'age_category',
-    #     title="Percent Positive",
-    #     labels = {
-    #         'DATE': 'Date',
-    #         'percent_positive_7d_avg': "Percent Positive (7 Day Average)"
-    #     }
-    #     # animation_group="country",
-    #     # size="pop", 
-    #     # color="continent", 
-    #     # hover_name="country",
-    #     # log_x=True,
-    #     # size_max=55,
-    #     # range_x=[100,100000],
-    #     # range_y=[25,90]
-    # )   
-
-    # df2 = px.data.gapminder()
-    # fig2 = px.scatter(df2, x="gdpPercap", y="lifeExp", animation_frame="year", animation_group="country",
-    #            size="pop", color="continent", hover_name="country",
-    #            log_x=True, size_max=55, range_x=[100,100000], range_y=[25,90])
-    
-    #fig2 = {}
-
     return select_ref, fig2
-
-
-
-
-
-
 
 
 
@@ -657,21 +676,39 @@ def update_graph_date(option_slctd, start, end):
 
 def graph2(regions, start, end, is_100k):
     '''
-    function for working with the graph on the right at the top
+    generate time-series plots of cases per region
+
+    inputs:
+        regions - list of Ontario region names
+        start   - start date for filtering data
+        end     - end date for filtering data
+        is_100k - Yes/No to determine if normalizing counts
+
+    returns:
+        fig1, - Active cases 
+        fig2, - Cumulative Resolved cases
+        fig3, - Cumulative Fatal cases
+        fig4, - Daily Fatal cases
+        fig5  - Daily Recovered cases
+
     '''
     
+    # determine regions to display
     if 'All' in regions:
         regions = all_regions
     elif len(regions) == 0:
         return {}, {}, {}, {}, {}
     
+    # determine data range
     start = str(pd.to_datetime(start).date())
     end = str(pd.to_datetime(end).date())
     
+    # filter data
     df = odata
     df = odata[odata['PHU_NAME'].isin(regions) & (odata['DATE'] >= start) & (odata['DATE'] <= end)]
     
     
+    # generate plot axis labels and titles
     fig1_title = "Active Cases"
     fig1_yaxis = "Number of Active Cases"
     
@@ -693,7 +730,14 @@ def graph2(regions, start, end, is_100k):
         fig3_title += ' Per 100,000'
         fig3_yaxis += ' Per 100,000'
         
-        
+    ########################################################
+    #               Create Plots
+    ########################################################
+
+    ########################################################
+    #               Active Cases
+    ########################################################
+
     fig1 = px.line(
         data_frame = df,
         x = 'DATE',
@@ -707,6 +751,11 @@ def graph2(regions, start, end, is_100k):
         },
         template='plotly_dark'
     )
+
+    ########################################################
+    #               Cumulative Resolved Cases
+    ########################################################
+
     fig2 = px.line(
         data_frame = df,
         x = 'DATE',
@@ -720,6 +769,11 @@ def graph2(regions, start, end, is_100k):
         },
         template='plotly_dark'
     )
+
+    ########################################################
+    #               Cumulative Fatal Cases
+    ########################################################
+
     fig3 = px.line(
         data_frame = df,
         x = 'DATE',
@@ -734,6 +788,10 @@ def graph2(regions, start, end, is_100k):
         template='plotly_dark'
     )
     
+    ########################################################
+    #               Daily Fatal Cases
+    ########################################################
+
     fig4 = px.line(
         data_frame = df,
         x = 'DATE',
@@ -748,6 +806,10 @@ def graph2(regions, start, end, is_100k):
         template='plotly_dark'
     )
     
+    ########################################################
+    #               Daily Resolved Cases
+    ########################################################
+
     fig5 = px.line(
         data_frame = df,
         x = 'DATE',
@@ -777,19 +839,32 @@ def graph2(regions, start, end, is_100k):
 
 def build_bars(regions, is_100k):
     '''
-    build 3 bar charts: active, resolved, deaths for region cases
+    build 3 bar charts: active, resolved, deaths for region cases, which display most recent date data
+
+    inputs:
+        regions - list of Ontario regions
+        is_100k - Yes/No to determine whether to normalize counts
+
+    returns:
+        fig1,   - Active cases bar chart
+        fig2,   - Resolved cases bar chart
+        fig3    - Deaths bar chart
     '''
 
     
+    # determine regions
     if 'All' in regions:
         regions = all_regions
     elif len(regions) == 0:
         return {}, {}, {}
     
+    # determine most recent date
     maxdate = odata['DATE'].max()
     
+    # filter dataframe
     df = odata[odata['PHU_NAME'].isin(regions) & (odata['DATE'] == str(maxdate))]
     
+    # generate chart titles and axes
     fig1_title = "Active Cases as of "+maxdate
     fig1_yaxis = "Number of Active Cases"
     
@@ -811,7 +886,9 @@ def build_bars(regions, is_100k):
         fig3_title += ' Per 100,000'
         fig3_yaxis += ' Per 100,000'
 
-
+    ########################################################
+    #               Active Cases
+    ########################################################
 
     fig1 = px.bar(
         df, 
@@ -826,6 +903,9 @@ def build_bars(regions, is_100k):
         template='plotly_dark'
     )
     
+    ########################################################
+    #               Resolved Cases
+    ########################################################
     fig2 = px.bar(
         df, 
         x="PHU_NAME", 
@@ -838,6 +918,11 @@ def build_bars(regions, is_100k):
         },
         template='plotly_dark'
     )
+
+    ########################################################
+    #               Fatal Cases
+    ########################################################
+
     fig3 = px.bar(
         df, 
         x="PHU_NAME", 

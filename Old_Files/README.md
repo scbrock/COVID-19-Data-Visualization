@@ -1,7 +1,7 @@
 # Covid-19-Data-Visulization
 In this project, we implemented a dashboard to visualize the data of COVID-19 in Ontario from various perspectives including summary statistics, plots, and a news feed. For instance, we provide statisitcs of infected cases, recovered cases based on the public health unit, and the visulization of vaccination cases. The objective is to provide the general public and decison makers with an overview of the COVID-19 situation in Ontario.
 
-The dashboard is developed in Python3 including libraries such as Dash, Dash Bootstrap, BeautifulSoup, and Pandas. Here is a `requirement.txt` that lists the Python version and the libraries we used. Please refer to it if you cannnot run the dashboard.
+The dashboard is developed in Python3 including libraries such as Dash, Dash Bootstrap, BeautifulSoup, and Pandas. Here is a `requirements.txt` that lists the Python version and the libraries we used. Please refer to it if you cannnot run the dashboard.
 
 
 
@@ -10,9 +10,9 @@ Please clone this repository via the follwoing command or the way you prefer.
 ```
 git clone https://github.com/scbrock/COVID-19-Data-Visualization.git
 ```
-Then run the merged.py under the `Covid-19-Data-Visulization` folder to start the dashboard. 
+Then run the dashboard.py under the `Dashboard_Final` folder to start the dashboard. 
 ```
-python3 merged.py 
+python3 dashboard.py 
 ```
 After running the Python file, a localhost address such as http://localhost:8000 will be generated. Please copy the address to Chrome browser. 
 

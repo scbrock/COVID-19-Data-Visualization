@@ -10,7 +10,7 @@ Please clone this repository via the follwoing command or the way you prefer.
 ```
 git clone https://github.com/scbrock/COVID-19-Data-Visualization.git
 ```
-Then run the dashboard.py under the `Dashboard_Final` folder to start the dashboard. 
+After cloning the repository, run the file dashboard.py under the `Dashboard_Final` folder to start the dashboard. 
 ```
 python3 dashboard.py 
 ```

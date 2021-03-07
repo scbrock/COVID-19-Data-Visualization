@@ -548,10 +548,12 @@ app.layout = dbc.Container([
 def update_graph(region):
  
     df = hospital_data.copy()
+    df = df.rename(columns={'ICU_vented': 'ICU_Ventilator', 'hospitalizations': 'Hospitalization'}) 
     df = df[df["oh_region"] == region]
-    fig = px.line(df,x='date',y=['ICU','ICU_vented','hospitalizations'],labels = {
+    fig = px.line(df,x='date',y=['ICU','ICU_Ventilator','Hospitalization'],labels = {
             'date': 'Date',
-            'value': 'Cases'}, template='plotly_dark')
+            'value': 'Cases',
+            'variable':'Hospitalizations'}, title = "Hospitalizations",template='plotly_dark')
     return fig
 
 

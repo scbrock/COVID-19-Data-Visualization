@@ -12,17 +12,9 @@ from bs4 import BeautifulSoup
 import re
 from datetime import date
 import numpy as np
-import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
-import plotly.express as px
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
-import dash_table
 import json
-
 from functions import *
 
 
@@ -142,28 +134,12 @@ deaths_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 # --------------Shikai's Data and Plot-------------------------------------------
 # ------------------------------------------------------------------------------
 
-url2 = "https://data.ontario.ca/dataset/8f3a449b-bde5-4631-ada6-8bd94dbc7d15/resource/e760480e-1f95-4634-a923-98161cfb02fa/download/region_hospital_icu_covid_data.csv"
+url = "https://data.ontario.ca/dataset/8f3a449b-bde5-4631-ada6-8bd94dbc7d15/resource/e760480e-1f95-4634-a923-98161cfb02fa/download/region_hospital_icu_covid_data.csv"
 
-dff = pd.read_csv(url2)
-dff = dff.dropna()
+hospital_data = pd.read_csv(url)
 region = ['CENTRAL', 'EAST', 'NORTH', 'TORONTO' ,'WEST']
-# ------------------------Done--------------------------------------------------
-app = dash.Dash(__name__, external_stylesheets=[dash_bootstrap_components.themes.DARKLY],
-                meta_tags=[{'name': 'viewport',
-                            'content': 'width=device-width, initial-scale=1.0'}]
-                )
 
 
-fig2 = px.bar(
-    data_frame=dff,
-    x=['ICU','ICU_vented','hospitalizations'],
-    y='oh_region',
-    animation_frame="date",
-    template='plotly_dark',
-    orientation='h'
-    )
-fig2.layout.updatemenus[0].buttons[0].args[1]['frame']['duration'] = 30
-fig2.layout.updatemenus[0].buttons[0].args[1]['transition']['duration'] = 5
 
 
 # --------------------------------------------------------------------------------
@@ -207,6 +183,10 @@ odata['Population'] = odata['Population'].fillna(odata['Population'].mean())
 # ------------------------------------------------------------------------------
 # ---------------------------Layout---------------------------------------------
 # ------------------------------------------------------------------------------
+app = dash.Dash(__name__, external_stylesheets=[dash_bootstrap_components.themes.DARKLY],
+                meta_tags=[{'name': 'viewport',
+                            'content': 'width=device-width, initial-scale=1.0'}]
+                )
 
 app.layout = dbc.Container([
     
@@ -506,37 +486,34 @@ app.layout = dbc.Container([
     html.Br(),
 
     ########################################################
-    #    Row 12: Hospitalizations Dropdown
+    #    Row 12: Hospitalizations Dropdown and plots
     ########################################################
     dbc.Row([
         dbc.Col([
             html.H2('Hospitalization', style={'color': 'white'}),
             html.H3('Select A Region', style={'padding-left':"40px"}),
-            dcc.Dropdown(id="slct_impact",
+            dcc.Dropdown(id="select_hosp",
                          options=[{"label": x, "value": x} for x in region],
                          value="TORONTO", multi=False,
+                         clearable=False,
                          style={"width": "50%", "padding-left":"40px"},
                          className='text-dark'
-                         )
+                         ),
+             html.Br(),
+             dbc.Col(
+                 dcc.Graph(id='hospital', figure={})
+                 , width={'size': 12},
+        )
+
         ])
     ]),
 
     html.Br(),
 
-    ########################################################
-    #    Row 13: Hospitalizations Plot
-    ########################################################
-    dbc.Row([
-        dbc.Col([
-            dcc.Graph(id='my_bee_map', figure={})
-        ], width={'size': 12, 'order': 1},
-        )
-    ]),
-
-    html.Br(),
+    
 
     ########################################################
-    #    Row 14: Sources and Links
+    #    Row 13: Sources and Links
     ########################################################
     dbc.Row([
         dbc.Col([
@@ -565,24 +542,19 @@ app.layout = dbc.Container([
 
 
 @app.callback(
-     Output('my_bee_map','figure'),
-     Input('slct_impact', 'value')
+    Output(component_id='hospital', component_property='figure'),
+    [Input(component_id='select_hosp', component_property='value')]
 )
-def update_graph(option_slctd):
+def update_graph(region):
  
-
-    dfff = dff.copy()
-    dfff = dfff[dfff["oh_region"] == option_slctd]
-   
-    fig = px.line(
-        data_frame=dfff,
-        x='date',
-        y=['ICU','ICU_vented','hospitalizations'],
-
-        template='plotly_dark'
-    )
-
+    df = hospital_data.copy()
+    df = df[df["oh_region"] == region]
+    fig = px.line(df,x='date',y=['ICU','ICU_vented','hospitalizations'],labels = {
+            'date': 'Date',
+            'value': 'Cases'}, template='plotly_dark')
     return fig
+
+
 
 
 # ------------------------------------------------------------------------------
@@ -944,4 +916,4 @@ def build_bars(regions, is_100k):
 
 
 if __name__=='__main__':
-    app.run_server(debug=True, port=8000)
+    app.run_server(debug=False, port=8000)
